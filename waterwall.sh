@@ -60,18 +60,23 @@ create_half_duplex_reverse_reality() {
 }
 EOF
 
-    echo -e -n "${CYAN}Is this an Iran server or Kharej server? (Iran/Kharej) (ipv6 is not added yet): ${NC}"
+    echo -e -n "${CYAN}Is this an IPv4 or IPv6 server? (ipv6 is not added yet): ${NC}"
     read server_type
     server_type=$(echo "$server_type" | tr '[:upper:]' '[:lower:]')
 
-    if [[ "$server_type" == "iran" ]]; then
-        echo -e -n "${CYAN}Enter a secure password: ${NC}"
-        read -s secure_password
-        echo
-        echo -e -n "${CYAN}Enter Kharej server IP: ${NC}"
-        read kharej_server_ip
+    if [[ "$server_type" == "ipv4" ]]; then
+        echo -e -n "${CYAN}Is this an Iran server or Kharej server? (Iran/Kharej): ${NC}"
+        read location_type
+        location_type=$(echo "$location_type" | tr '[:upper:]' '[:lower:]')
 
-        cat <<EOF > $WATERWALL_DIR/config.json
+        if [[ "$location_type" == "iran" ]]; then
+            echo -e -n "${CYAN}Enter a secure password: ${NC}"
+            read -s secure_password
+            echo
+            echo -e -n "${CYAN}Enter Kharej server IP: ${NC}"
+            read kharej_server_ip
+
+            cat <<EOF > $WATERWALL_DIR/config.json
 {
     "name": "reverse_reality_grpc_hd_multiport_server",
     "nodes": [
@@ -165,14 +170,14 @@ EOF
     ]
 }
 EOF
-    elif [[ "$server_type" == "kharej" ]]; then
-        echo -e -n "${CYAN}Enter a secure password: ${NC}"
-        read -s secure_password
-        echo
-        echo -e -n "${CYAN}Enter Iran server IP: ${NC}"
-        read iran_server_ip
+        elif [[ "$location_type" == "kharej" ]]; then
+            echo -e -n "${CYAN}Enter a secure password: ${NC}"
+            read -s secure_password
+            echo
+            echo -e -n "${CYAN}Enter Iran server IP: ${NC}"
+            read iran_server_ip
 
-        cat <<EOF > $WATERWALL_DIR/config.json
+            cat <<EOF > $WATERWALL_DIR/config.json
 {
     "name": "reverse_reality_grpc_client_hd_multiport_client",
     "nodes": [
@@ -274,8 +279,12 @@ EOF
     ]
 }
 EOF
+        else
+            echo -e "${RED}Invalid input. Please enter 'Iran' or 'Kharej'.${NC}"
+            return
+        fi
     else
-        echo -e "${RED}Invalid input. Please enter 'Iran' or 'Kharej'.${NC}"
+        echo -e "${RED}Invalid input. Please enter 'IPv4' or 'IPv6'.${NC}"
         return
     fi
 
@@ -304,9 +313,6 @@ EOF
 
     echo -e "${GREEN}Configuration and service created.${NC}"
     read -p "Press Enter to continue..."
-
-    # Return to main menu after successful creation
-    return
 }
 
 # Function to create a new configuration and service
