@@ -7,29 +7,28 @@ YELLOW='\033[0;33m'
 CYAN='\e[36m'
 NC='\033[0m' # No Color
 
-# Ensure unzip is installed
-if ! command -v unzip &> /dev/null; then
-    echo -e "${YELLOW}unzip not found, installing...${NC}"
-    apt update
-    apt install -y unzip
-fi
+# Directories and files
+WATERWALL_DIR="/root/waterwall"
+SERVICE_FILE="/etc/systemd/system/waterwall.service"
 
-# Create /root/waterwall directory
-mkdir -p /root/waterwall
-cd /root/waterwall
+# Function to create a new configuration and service for Half Duplex Reverse Reality with mux
+create_half_duplex_reverse_reality() {
+    echo -e "${YELLOW}"
+    echo "========================================="
+    echo "  CREATE HALF DUPLEX REVERSE REALITY     "
+    echo "========================================="
+    echo -e "${NC}"
 
-# Download the latest Waterwall zip file
-echo -e "${CYAN}Downloading the latest Waterwall zip file...${NC}"
-wget -O Waterwall-linux-64.zip https://github.com/radkesvat/WaterWall/releases/latest/download/Waterwall-linux-64.zip
+    echo "Downloading the latest Waterwall zip file..."
+    wget -O Waterwall-linux-64.zip https://github.com/radkesvat/WaterWall/releases/latest/download/Waterwall-linux-64.zip
 
-# Unzip the downloaded file
-echo -e "${CYAN}Unzipping the file...${NC}"
-unzip Waterwall-linux-64.zip
-rm Waterwall-linux-64.zip
-mv Waterwall waterwall
+    echo "Unzipping the file..."
+    unzip Waterwall-linux-64.zip -d $WATERWALL_DIR
+    rm Waterwall-linux-64.zip
+    mv $WATERWALL_DIR/Waterwall $WATERWALL_DIR/waterwall
+    chmod +x $WATERWALL_DIR/waterwall
 
-# Create core.json
-cat <<EOF > core.json
+    cat <<EOF > $WATERWALL_DIR/core.json
 {
     "log": {
         "path": "log/",
@@ -61,20 +60,18 @@ cat <<EOF > core.json
 }
 EOF
 
-# Ask if the server is Iran or Kharej
-while true; do
-    echo -e "${YELLOW}"
-    echo "Is this an Iran server or Kharej server? (Iran/Kharej): "
+    echo -e -n "${CYAN}Is this an Iran server or Kharej server? (Iran/Kharej): ${NC}"
     read server_type
     server_type=$(echo "$server_type" | tr '[:upper:]' '[:lower:]')
 
     if [[ "$server_type" == "iran" ]]; then
-        read -sp "Enter a secure password: " secure_password
+        echo -e -n "${CYAN}Enter a secure password: ${NC}"
+        read -s secure_password
         echo
-        read -p "Enter Kharej server IP: " kharej_server_ip
-        read -p "Is the Kharej server IP IPv6 or IPv4? (IPv6/IPv4): " ip_version
+        echo -e -n "${CYAN}Enter Kharej server IP: ${NC}"
+        read kharej_server_ip
 
-        cat <<EOF > config.json
+        cat <<EOF > $WATERWALL_DIR/config.json
 {
     "name": "reverse_reality_grpc_hd_multiport_server",
     "nodes": [
@@ -168,13 +165,14 @@ while true; do
     ]
 }
 EOF
-        break
     elif [[ "$server_type" == "kharej" ]]; then
-        read -sp "Enter a secure password: " secure_password
+        echo -e -n "${CYAN}Enter a secure password: ${NC}"
+        read -s secure_password
         echo
-        read -p "Enter Iran server IP: " iran_server_ip
+        echo -e -n "${CYAN}Enter Iran server IP: ${NC}"
+        read iran_server_ip
 
-        cat <<EOF > config.json
+        cat <<EOF > $WATERWALL_DIR/config.json
 {
     "name": "reverse_reality_grpc_client_hd_multiport_client",
     "nodes": [
@@ -242,62 +240,172 @@ EOF
             "type": "HalfDuplexClient",
             "next": "reality_client"
         },
-        
         {
             "name": "reality_client",
             "type": "RealityClient",
             "settings": {
-                "sni": "sahab.ir",
+                "destination": "reality_dest",
                 "password": "$secure_password"
             },
-            "next": "outbound_to_iran"
+            "next": "halfc"
         },
         {
-            "name": "outbound_to_iran",
+            "name": "iran_outbound",
+            "type": "TcpListener",
+            "settings": {
+                "address": "0.0.0.0",
+                "port": 23,
+                "nodelay": true,
+                "whitelist": [
+                    "$iran_server_ip/32"
+                ]
+            },
+            "next": "reality_client"
+        },
+        {
+            "name": "reality_dest",
             "type": "TcpConnector",
             "settings": {
                 "nodelay": true,
-                "address": "$iran_server_ip",
+                "address": "telewebion.com",
                 "port": 443
             }
         }
     ]
 }
 EOF
-        break
     else
-        echo -e "${RED}Invalid input. Please specify 'Iran' or 'Kharej'.${NC}"
+        echo -e "${RED}Invalid input. Please enter 'Iran' or 'Kharej'.${NC}"
+        return
     fi
-done
 
-# Create systemd service
-cat <<EOF > /etc/systemd/system/waterwall.service
+    # Create the systemd service file
+    cat <<EOF > $SERVICE_FILE
 [Unit]
 Description=Waterwall Service
 After=network.target
 
 [Service]
-ExecStart=/root/waterwall/waterwall
-WorkingDirectory=/root/waterwall
-StandardOutput=journal
-StandardError=journal
+Type=simple
+ExecStart=$WATERWALL_DIR/waterwall $WATERWALL_DIR/core.json
 Restart=always
-User=root
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Enable and start the service
-systemctl daemon-reload
-systemctl enable waterwall.service
-systemctl start waterwall.service
+    # Enable and start the service
+    systemctl daemon-reload
+    systemctl enable waterwall.service
+    systemctl start waterwall.service
 
-# Check the status of the service
-if systemctl is-active --quiet waterwall.service; then
-    echo -e "${GREEN}Waterwall service is running successfully.${NC}"
-else
-    echo -e "${RED}Waterwall service failed to start. Please check the logs for details.${NC}"
-fi
+    echo -e "${GREEN}Configuration and service created.${NC}"
+    read -p "Press Enter to continue..."
+}
 
-echo -e "${CYAN}Configuration completed.${NC}"
+# Function to create a new configuration and service
+create_config_service() {
+    while true; do
+        clear
+        echo -e "${YELLOW}"
+        echo "========================================="
+        echo "         CREATE CONFIGURATION            "
+        echo "========================================="
+        echo -e "${NC}"
+
+        echo -e "${CYAN}1. Half Duplex Reverse Reality with mux${NC}"
+        echo -e "${RED}2. Back to Main Menu${NC}"
+        echo ""
+        echo -n "Select an option: "
+        read sub_choice
+
+        case $sub_choice in
+        1)
+            create_half_duplex_reverse_reality
+            ;;
+        2)
+            break
+            ;;
+        *)
+            echo -e "${RED}Invalid option. Please try again.${NC}"
+            read -p "Press Enter to continue..."
+            ;;
+        esac
+    done
+}
+
+# Function to remove the configuration and service
+remove_config_service() {
+    echo -e "${RED}"
+    echo "========================================="
+    echo "      REMOVE CONFIGURATION & SERVICE      "
+    echo "========================================="
+    echo -e "${NC}"
+
+    echo -e -n "${YELLOW}Are you sure you want to remove the Waterwall service? (yes/no): ${NC}"
+    read confirmation
+
+    if [[ "$confirmation" == "yes" ]]; then
+        systemctl stop waterwall.service
+        systemctl disable waterwall.service
+        rm -f $SERVICE_FILE
+        rm -rf $WATERWALL_DIR
+        systemctl daemon-reload
+        echo -e "${RED}Configuration and service removed.${NC}"
+    else
+        echo -e "${YELLOW}Operation cancelled.${NC}"
+    fi
+
+    read -p "Press Enter to continue..."
+}
+
+# Function to show the status of the service
+show_service_status() {
+    echo -e "${GREEN}"
+    echo "========================================="
+    echo "           SHOW SERVICE STATUS            "
+    echo "========================================="
+    echo -e "${NC}"
+
+    systemctl status waterwall.service
+
+    read -p "Press Enter to continue..."
+}
+
+# Main menu
+while true; do
+    clear
+    echo -e "${GREEN}"
+    echo "========================================="
+    echo "     MahdiPatrioT WATERFALL MENU          "
+    echo "========================================="
+    echo -e "${NC}"
+
+    echo -e "${GREEN}1. Create Configuration and Service${NC}"
+    echo -e "${RED}2. Remove Configuration and Service${NC}"
+    echo -e "${CYAN}3. Show Service Status${NC}"
+    echo -e "${YELLOW}4. Exit${NC}"
+    echo ""
+    echo -n "Select an option: "
+    read choice
+
+    case $choice in
+    1)
+        create_config_service
+        ;;
+    2)
+        remove_config_service
+        ;;
+    3)
+        show_service_status
+        ;;
+    4)
+        exit 0
+        ;;
+    *)
+        echo -e "${RED}Invalid option. Please try again.${NC}"
+        read -p "Press Enter to continue..."
+        ;;
+    esac
+done
