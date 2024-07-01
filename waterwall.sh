@@ -1,45 +1,61 @@
 #!/bin/bash
 
+# Color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\e[36m'
+NC='\033[0m' # No Color
+
+# Directories and files
+CONFIG_DIR="/root/waterfall"
+SERVICE_DIR="/etc/systemd/system"
+RESET_SCRIPT="/etc/mahdiratholereset.sh"
+CRON_FILE="/etc/cron.d/rathole_cron"
+
 # Function to create Waterwall configuration and service
 create_waterwall_config() {
-    clear
-    echo "Creating Waterwall Configuration and Service..."
+    echo -e "${YELLOW}"
+    echo "========================================="
+    echo "  CREATE CONFIGURATION AND SERVICE       "
+    echo "========================================="
+    echo -e "${NC}"
 
     # Check if unzip is installed, install if necessary
     if ! command -v unzip &> /dev/null; then
-        echo "Installing unzip..."
+        echo -e "${YELLOW}Installing unzip...${NC}"
         apt update
         apt install -y unzip
     fi
 
     # Create folder and download Waterwall
-    mkdir -p /root/waterwall
-    cd /root/waterwall || exit
+    mkdir -p /root/waterfall
+    cd /root/waterfall || exit
 
-    echo "Downloading Waterwall binary..."
+    echo -e "${YELLOW}Downloading Waterwall binary...${NC}"
     wget -O Waterwall-linux-64.zip https://github.com/radkesvat/WaterWall/releases/latest/download/Waterwall-linux-64.zip
     unzip Waterwall-linux-64.zip
     rm Waterwall-linux-64.zip
     mv Waterwall waterwall
-    chmod +x /root/waterwall/waterwall
+    chmod +x /root/waterfall/waterwall
 
     # Download core.json
-    echo "Downloading core.json..."
+    echo -e "${YELLOW}Downloading core.json...${NC}"
     wget -O core.json https://raw.githubusercontent.com/mahdipatriot/waterwall/main/core.json
 
     # Select server type: Iran or Kharej
-    echo "Select server type:"
-    echo "1. Iran"
-    echo "2. Kharej"
-    read -rp "Enter your choice: " server_type
+    echo -e "${YELLOW}Select server type:${NC}"
+    echo -e "${CYAN}1. Iran${NC}"
+    echo -e "${CYAN}2. Kharej${NC}"
+    read -rp "$(echo -e ${CYAN})Enter your choice: $(echo -e ${NC})" server_type
 
     case $server_type in
         1)
             # Iran server configuration
-            read -rp "Enter secure password: " passwd
-            read -rp "Enter Kharej server IP: " inja_ip_kharej
-            read -rp "Enter ipv4 or ipv6: " ip_version
-            read -rp "Enter SNI: " inja_sni
+            read -rp "$(echo -e ${CYAN})Enter secure password: $(echo -e ${NC})" passwd
+            read -rp "$(echo -e ${CYAN})Enter Kharej server IP: $(echo -e ${NC})" inja_ip_kharej
+            read -rp "$(echo -e ${CYAN})Enter ipv4 or ipv6: $(echo -e ${NC})" ip_version
+            read -rp "$(echo -e ${CYAN})Enter SNI: $(echo -e ${NC})" inja_sni
 
             # Download and customize config.json for Iran server
             wget -O config.json https://raw.githubusercontent.com/mahdipatriot/waterwall/main/halfduplex_reverse_reality_iran
@@ -49,10 +65,10 @@ create_waterwall_config() {
             ;;
         2)
             # Kharej server configuration
-            read -rp "Enter secure password: " passwd
-            read -rp "Enter Iran server IP: " inja_ip_server_iran
-            read -rp "Enter ipv4 or ipv6: " ip_version
-            read -rp "Enter SNI: " inja_sni
+            read -rp "$(echo -e ${CYAN})Enter secure password: $(echo -e ${NC})" passwd
+            read -rp "$(echo -e ${CYAN})Enter Iran server IP: $(echo -e ${NC})" inja_ip_server_iran
+            read -rp "$(echo -e ${CYAN})Enter ipv4 or ipv6: $(echo -e ${NC})" ip_version
+            read -rp "$(echo -e ${CYAN})Enter SNI: $(echo -e ${NC})" inja_sni
 
             # Download and customize config.json for Kharej server
             wget -O config.json https://raw.githubusercontent.com/mahdipatriot/waterwall/main/halfuplex_reverse_reality_kharej
@@ -61,7 +77,7 @@ create_waterwall_config() {
             sed -i "s/\$inja_sni/$inja_sni/g" config.json
             ;;
         *)
-            echo "Invalid option. Exiting..."
+            echo -e "${RED}Invalid option. Exiting...${NC}"
             exit 1
             ;;
     esac
@@ -73,8 +89,8 @@ Description=Waterwall Service
 After=network.target
 
 [Service]
-ExecStart=/root/waterwall/waterwall
-WorkingDirectory=/root/waterwall
+ExecStart=/root/waterfall/waterwall
+WorkingDirectory=/root/waterfall
 StandardOutput=journal
 StandardError=journal
 Restart=always
@@ -89,82 +105,113 @@ EOF
     systemctl start waterwall
     systemctl enable waterwall
 
-    echo "Waterwall configuration and service setup complete."
-    echo "Systemd service status:"
+    echo -e "${GREEN}Waterwall configuration and service setup complete.${NC}"
+    echo -e "${CYAN}Systemd service status:${NC}"
     systemctl status waterwall --no-pager
+    read -p "Press Enter to continue..."
 }
 
 # Function to remove Waterwall configuration and service
 remove_waterwall_config() {
-    clear
-    echo "Removing Waterwall Configuration and Service..."
+    echo -e "${RED}"
+    echo "========================================="
+    echo " REMOVE CONFIGURATION AND SERVICE        "
+    echo "========================================="
+    echo -e "${NC}"
 
-    read -rp "Are you sure you want to remove /root/waterwall and related systemd service? (yes/no): " answer
+    read -rp "$(echo -e ${YELLOW})Are you sure you want to remove /root/waterfall and related systemd service? (yes/no): $(echo -e ${NC})" answer
     case $answer in
         yes)
             systemctl stop waterwall
             systemctl disable waterwall
-            rm -rf /root/waterwall
+            rm -rf /root/waterfall
             rm /etc/systemd/system/waterwall.service
-            echo "Waterwall configuration and service removed."
+            systemctl daemon-reload
+
+            echo -e "${RED}Waterwall configuration and service removed.${NC}"
             ;;
         *)
             echo "Removal aborted."
             ;;
     esac
+
+    read -p "Press Enter to continue..."
 }
 
 # Function to show Waterwall service status
 show_service_status() {
-    clear
-    echo "Waterwall Service Status:"
+    echo -e "${CYAN}"
+    echo "========================================="
+    echo "   SHOW SERVICE STATUS                   "
+    echo "========================================="
+    echo -e "${NC}"
+
+    echo -e "${CYAN}Waterwall Service Status:${NC}"
     systemctl status waterwall --no-pager
+
+    read -p "Press Enter to continue..."
 }
 
 # Function to restart Waterwall service
 restart_service() {
-    clear
-    echo "Restarting Waterwall Service..."
+    echo -e "${YELLOW}"
+    echo "========================================="
+    echo "     RESTART SERVICE                     "
+    echo "========================================="
+    echo -e "${NC}"
+
     systemctl restart waterwall
-    echo "Waterwall Service restarted."
+
+    echo -e "${YELLOW}Waterwall Service restarted.${NC}"
+    read -p "Press Enter to continue..."
 }
 
 # Main menu function
 main_menu() {
-    clear
-    echo "MahdiPatrioT WATERFALL MENU"
-    echo "1. Create Configuration and Service"
-    echo "2. Remove Configuration and Service"
-    echo "3. Show Service Status"
-    echo "4. Restart Service"
-    echo "5. Exit"
+    while true; do
+        clear
+        echo -e "${GREEN}"
+        echo "========================================="
+        echo "   MahdiPatrioT WATERFALL MENU           "
+        echo "========================================="
+        echo -e "${NC}"
 
-    read -rp "Enter your choice: " choice
-    case $choice in
-        1)
-            create_waterwall_config
-            ;;
-        2)
-            remove_waterwall_config
-            ;;
-        3)
-            show_service_status
-            ;;
-        4)
-            restart_service
-            ;;
-        5)
-            echo "Exiting..."
-            exit 0
-            ;;
-        *)
-            echo "Invalid option. Please try again."
-            ;;
-    esac
+        echo -e "${GREEN}1. Create Configuration and Service${NC}"
+        echo -e "${RED}2. Remove Configuration and Service${NC}"
+        echo -e "${CYAN}3. Show Service Status${NC}"
+        echo -e "${YELLOW}4. Restart Service${NC}"
+        echo -e "${CYAN}5. Exit${NC}"
+        echo ""
+        echo -e "${CYAN}GitHub: https://github.com/mahdipatriot/waterwall${NC}"
+        echo -e "${CYAN}Source: https://github.com/radkesvat/WaterWall${NC}"
+        echo ""
+        echo -n "Enter your choice: "
+        read choice
+
+        case $choice in
+            1)
+                create_waterwall_config
+                ;;
+            2)
+                remove_waterwall_config
+                ;;
+            3)
+                show_service_status
+                ;;
+            4)
+                restart_service
+                ;;
+            5)
+                echo "Exiting..."
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Invalid option. Please try again.${NC}"
+                read -p "Press Enter to continue..."
+                ;;
+        esac
+    done
 }
 
-# Loop to display main menu until user exits
-while true; do
-    main_menu
-    read -rp "Press Enter to return to the main menu."
-done
+# Start the main menu
+main_menu
