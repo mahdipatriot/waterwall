@@ -56,12 +56,14 @@ create_waterwall_config() {
             read -rp "$(echo -e ${CYAN})Enter Kharej server IP: $(echo -e ${NC})" inja_ip_kharej
             read -rp "$(echo -e ${CYAN})Enter ipv4 or ipv6: $(echo -e ${NC})" ip_version
             read -rp "$(echo -e ${CYAN})Enter SNI: $(echo -e ${NC})" inja_sni
+            read -rp "$(echo -e ${CYAN})Enter worker count (8x your Iran Server cores): $(echo -e ${NC})" worker_count
 
             # Download and customize config.json for Iran server
             wget -O config.json https://raw.githubusercontent.com/mahdipatriot/waterwall/main/halfduplex_reverse_reality_iran
             sed -i "s/\$passwd/$passwd/g" config.json
             sed -i "s/\$inja_ip_kharej/$inja_ip_kharej/g" config.json
             sed -i "s/\$inja_sni/$inja_sni/g" config.json
+            sed -i "s/\"workers\": 0,/\"workers\": $worker_count,/g" core.json
             ;;
         2)
             # Kharej server configuration
@@ -69,12 +71,14 @@ create_waterwall_config() {
             read -rp "$(echo -e ${CYAN})Enter Iran server IP: $(echo -e ${NC})" inja_ip_server_iran
             read -rp "$(echo -e ${CYAN})Enter ipv4 or ipv6: $(echo -e ${NC})" ip_version
             read -rp "$(echo -e ${CYAN})Enter SNI: $(echo -e ${NC})" inja_sni
+            read -rp "$(echo -e ${CYAN})Enter worker count (8x your Iran Server cores): $(echo -e ${NC})" worker_count
 
             # Download and customize config.json for Kharej server
             wget -O config.json https://raw.githubusercontent.com/mahdipatriot/waterwall/main/halfuplex_reverse_reality_kharej
             sed -i "s/\$passwd/$passwd/g" config.json
             sed -i "s/\$inja_ip_server_iran/$inja_ip_server_iran/g" config.json
             sed -i "s/\$inja_sni/$inja_sni/g" config.json
+            sed -i "s/\"workers\": 0,/\"workers\": $worker_count,/g" core.json
             ;;
         *)
             echo -e "${RED}Invalid option. Exiting...${NC}"
@@ -115,26 +119,21 @@ EOF
 remove_waterwall_config() {
     echo -e "${RED}"
     echo "========================================="
-    echo " REMOVE CONFIGURATION AND SERVICE        "
+    echo "  REMOVE CONFIGURATION AND SERVICE       "
     echo "========================================="
     echo -e "${NC}"
 
-    read -rp "$(echo -e ${YELLOW})Are you sure you want to remove /root/waterfall and related systemd service? (yes/no): $(echo -e ${NC})" answer
-    case $answer in
-        yes)
-            systemctl stop waterwall
-            systemctl disable waterwall
-            rm -rf /root/waterfall
-            rm /etc/systemd/system/waterwall.service
-            systemctl daemon-reload
+    # Stop and disable Waterwall service
+    systemctl stop waterwall
+    systemctl disable waterwall
 
-            echo -e "${RED}Waterwall configuration and service removed.${NC}"
-            ;;
-        *)
-            echo "Removal aborted."
-            ;;
-    esac
+    # Remove systemd service file
+    rm -f /etc/systemd/system/waterwall.service
 
+    # Remove Waterwall directory and files
+    rm -rf /root/waterfall
+
+    echo -e "${GREEN}Waterwall configuration and service removed.${NC}"
     read -p "Press Enter to continue..."
 }
 
@@ -142,27 +141,26 @@ remove_waterwall_config() {
 show_service_status() {
     echo -e "${CYAN}"
     echo "========================================="
-    echo "   SHOW SERVICE STATUS                   "
+    echo "      SHOW SERVICE STATUS                "
     echo "========================================="
     echo -e "${NC}"
 
-    echo -e "${CYAN}Waterwall Service Status:${NC}"
     systemctl status waterwall --no-pager
 
     read -p "Press Enter to continue..."
 }
 
 # Function to restart Waterwall service
-restart_service() {
-    echo -e "${YELLOW}"
+restart_waterwall_service() {
+    echo -e "${CYAN}"
     echo "========================================="
-    echo "     RESTART SERVICE                     "
+    echo "      RESTART WATERWALL SERVICE          "
     echo "========================================="
     echo -e "${NC}"
 
     systemctl restart waterwall
 
-    echo -e "${YELLOW}Waterwall Service restarted.${NC}"
+    echo -e "${GREEN}Waterwall service restarted.${NC}"
     read -p "Press Enter to continue..."
 }
 
@@ -179,11 +177,11 @@ main_menu() {
         echo -e "${GREEN}1. Create Configuration and Service${NC}"
         echo -e "${RED}2. Remove Configuration and Service${NC}"
         echo -e "${CYAN}3. Show Service Status${NC}"
-        echo -e "${YELLOW}4. Restart Service${NC}"
+        echo -e "${YELLOW}4. Restart Waterwall Service${NC}"
         echo -e "${CYAN}5. Exit${NC}"
         echo ""
-        echo -e "${CYAN}GitHub: https://github.com/mahdipatriot/waterwall${NC}"
-        echo -e "${CYAN}Source: https://github.com/radkesvat/WaterWall${NC}"
+        echo -e "${CYAN}GitHub: [mahdipatriot/waterwall](https://github.com/mahdipatriot/waterwall)${NC}"
+        echo -e "${CYAN}Source: [radkesvat/WaterWall](https://github.com/radkesvat/WaterWall)${NC}"
         echo ""
         echo -n "Enter your choice: "
         read choice
@@ -199,7 +197,7 @@ main_menu() {
                 show_service_status
                 ;;
             4)
-                restart_service
+                restart_waterwall_service
                 ;;
             5)
                 echo "Exiting..."
