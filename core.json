@@ -26,6 +26,6 @@
         "libs-path": "libs/"
     },
     "configs": [
-        "config_name.json"
+        "config.json"
     ]
 }
