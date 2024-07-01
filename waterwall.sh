@@ -8,7 +8,7 @@ CYAN='\e[36m'
 NC='\033[0m' # No Color
 
 # Directories and files
-CONFIG_DIR="/root/waterfall"
+CONFIG_DIR="/root/waterwall"
 SERVICE_DIR="/etc/systemd/system"
 RESET_SCRIPT="/etc/mahdiratholereset.sh"
 CRON_FILE="/etc/cron.d/rathole_cron"
@@ -29,15 +29,15 @@ create_waterwall_config() {
     fi
 
     # Create folder and download Waterwall
-    mkdir -p /root/waterfall
-    cd /root/waterfall || exit
+    mkdir -p /root/waterwall
+    cd /root/waterwall || exit
 
     echo -e "${YELLOW}Downloading Waterwall binary...${NC}"
     wget -O Waterwall-linux-64.zip https://github.com/radkesvat/WaterWall/releases/latest/download/Waterwall-linux-64.zip
     unzip Waterwall-linux-64.zip
     rm Waterwall-linux-64.zip
     mv Waterwall waterwall
-    chmod +x /root/waterfall/waterwall
+    chmod +x /root/waterwall/waterwall
 
     # Download core.json
     echo -e "${YELLOW}Downloading core.json...${NC}"
@@ -93,8 +93,8 @@ Description=Waterwall Service
 After=network.target
 
 [Service]
-ExecStart=/root/waterfall/waterwall
-WorkingDirectory=/root/waterfall
+ExecStart=/root/waterwall/waterwall
+WorkingDirectory=/root/waterwall
 StandardOutput=journal
 StandardError=journal
 Restart=always
@@ -131,7 +131,7 @@ remove_waterwall_config() {
     rm -f /etc/systemd/system/waterwall.service
 
     # Remove Waterwall directory and files
-    rm -rf /root/waterfall
+    rm -rf /root/waterwall
 
     echo -e "${GREEN}Waterwall configuration and service removed.${NC}"
     read -p "Press Enter to continue..."
@@ -170,7 +170,7 @@ main_menu() {
         clear
         echo -e "${GREEN}"
         echo "========================================="
-        echo "   MahdiPatrioT WATERFALL MENU           "
+        echo "   MahdiPatrioT waterwall MENU           "
         echo "========================================="
         echo -e "${NC}"
 
