@@ -1,4 +1,4 @@
-# MahdiPatrioT WATERFALL MENU
+# WaterWall Installer
 
 This script provides a menu-driven interface to manage Waterwall configurations and services.
 
