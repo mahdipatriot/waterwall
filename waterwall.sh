@@ -1,295 +1,73 @@
 #!/bin/bash
 
-# Color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-CYAN='\e[36m'
-NC='\033[0m' # No Color
+# Function to create Waterwall configuration and service
+create_waterwall_config() {
+    clear
+    echo "Creating Waterwall Configuration and Service..."
 
-# Directories and files
-WATERWALL_DIR="/root/waterwall"
-SERVICE_FILE="/etc/systemd/system/waterwall.service"
-
-# Function to create a new configuration and service for Half Duplex Reverse Reality with mux
-create_half_duplex_reverse_reality() {
-    echo -e "${YELLOW}"
-    echo "========================================="
-    echo "  CREATE HALF DUPLEX REVERSE REALITY     "
-    echo "========================================="
-    echo -e "${NC}"
-
-    echo "Downloading the latest Waterwall zip file..."
-    wget -O Waterwall-linux-64.zip https://github.com/radkesvat/WaterWall/releases/latest/download/Waterwall-linux-64.zip
-
-    echo "Unzipping the file..."
-    unzip Waterwall-linux-64.zip -d $WATERWALL_DIR
-    rm Waterwall-linux-64.zip
-    mv $WATERWALL_DIR/Waterwall $WATERWALL_DIR/waterwall
-    chmod +x $WATERWALL_DIR/waterwall
-
-    cat <<EOF > $WATERWALL_DIR/core.json
-{
-    "log": {
-        "path": "log/",
-        "core": {
-            "loglevel": "DEBUG",
-            "file": "core.log",
-            "console": true
-        },
-        "network": {
-            "loglevel": "DEBUG",
-            "file": "network.log",
-            "console": true
-        },
-        "dns": {
-            "loglevel": "SILENT",
-            "file": "dns.log",
-            "console": false
-        }
-    },
-    "dns": {},
-    "misc": {
-        "workers": 0,
-        "ram-profile": "server",
-        "libs-path": "libs/"
-    },
-    "configs": [
-        "config.json"
-    ]
-}
-EOF
-
-    echo -e -n "${CYAN}Is this an IPv4 or IPv6 server? (ipv6 is not added yet): ${NC}"
-    read server_type
-    server_type=$(echo "$server_type" | tr '[:upper:]' '[:lower:]')
-
-    if [[ "$server_type" == "ipv4" ]]; then
-        echo -e -n "${CYAN}Is this an Iran server or Kharej server? (Iran/Kharej): ${NC}"
-        read location_type
-        location_type=$(echo "$location_type" | tr '[:upper:]' '[:lower:]')
-
-        if [[ "$location_type" == "iran" ]]; then
-            echo -e -n "${CYAN}Enter a secure password: ${NC}"
-            read -s secure_password
-            echo
-            echo -e -n "${CYAN}Enter Kharej server IP: ${NC}"
-            read kharej_server_ip
-
-            cat <<EOF > $WATERWALL_DIR/config.json
-{
-    "name": "reverse_reality_grpc_hd_multiport_server",
-    "nodes": [
-        {
-            "name": "users_inbound",
-            "type": "TcpListener",
-            "settings": {
-                "address": "0.0.0.0",
-                "port": [23,65500],
-                "nodelay": true
-            },
-            "next": "header"
-        },
-        {
-            "name": "header",
-            "type": "HeaderClient",
-            "settings": {
-                "data": "src_context->port"
-            },
-            "next": "bridge2"
-        },
-        {
-            "name": "bridge2",
-            "type": "Bridge",
-            "settings": {
-                "pair": "bridge1"
-            }
-        },
-        {
-            "name": "bridge1",
-            "type": "Bridge",
-            "settings": {
-                "pair": "bridge2"
-            }
-        },
-        {
-            "name": "reverse_server",
-            "type": "ReverseServer",
-            "settings": {},
-            "next": "bridge1"
-        },
-        {
-            "name": "pbserver",
-            "type": "ProtoBufServer",
-            "settings": {},
-            "next": "reverse_server"
-        },
-        {
-            "name": "h2server",
-            "type": "Http2Server",
-            "settings": {},
-            "next": "pbserver"
-        },
-        {
-            "name": "halfs",
-            "type": "HalfDuplexServer",
-            "settings": {},
-            "next": "h2server"
-        },
-        {
-            "name": "reality_server",
-            "type": "RealityServer",
-            "settings": {
-                "destination": "reality_dest",
-                "password": "$secure_password"
-            },
-            "next": "halfs"
-        },
-        {
-            "name": "kharej_inbound",
-            "type": "TcpListener",
-            "settings": {
-                "address": "0.0.0.0",
-                "port": 443,
-                "nodelay": true,
-                "whitelist": [
-                    "$kharej_server_ip/32"
-                ]
-            },
-            "next": "reality_server"
-        },
-        {
-            "name": "reality_dest",
-            "type": "TcpConnector",
-            "settings": {
-                "nodelay": true,
-                "address": "telewebion.com",
-                "port": 443
-            }
-        }
-    ]
-}
-EOF
-        elif [[ "$location_type" == "kharej" ]]; then
-            echo -e -n "${CYAN}Enter a secure password: ${NC}"
-            read -s secure_password
-            echo
-            echo -e -n "${CYAN}Enter Iran server IP: ${NC}"
-            read iran_server_ip
-
-            cat <<EOF > $WATERWALL_DIR/config.json
-{
-    "name": "reverse_reality_grpc_client_hd_multiport_client",
-    "nodes": [
-        {
-            "name": "outbound_to_core",
-            "type": "TcpConnector",
-            "settings": {
-                "nodelay": true,
-                "address": "127.0.0.1",
-                "port": "dest_context->port"
-            }
-        },
-        {
-            "name": "header",
-            "type": "HeaderServer",
-            "settings": {
-                "override": "dest_context->port"
-            },
-            "next": "outbound_to_core"
-        },
-        {
-            "name": "bridge1",
-            "type": "Bridge",
-            "settings": {
-                "pair": "bridge2"
-            },
-            "next": "header"
-        },
-        {
-            "name": "bridge2",
-            "type": "Bridge",
-            "settings": {
-                "pair": "bridge1"
-            },
-            "next": "reverse_client"
-        },
-        {
-            "name": "reverse_client",
-            "type": "ReverseClient",
-            "settings": {
-                "minimum-unused": 16
-            },
-            "next": "pbclient"
-        },
-        {
-            "name": "pbclient",
-            "type": "ProtoBufClient",
-            "settings": {},
-            "next": "h2client"
-        },
-        {
-            "name": "h2client",
-            "type": "Http2Client",
-            "settings": {
-                "host": "sahab.ir",
-                "port": 443,
-                "path": "/",
-                "content-type": "application/grpc",
-                "concurrency": 64
-            },
-            "next": "halfc"
-        },
-        {
-            "name": "halfc",
-            "type": "HalfDuplexClient",
-            "next": "reality_client"
-        },
-        {
-            "name": "reality_client",
-            "type": "RealityClient",
-            "settings": {
-                "destination": "reality_dest",
-                "password": "$secure_password"
-            },
-            "next": "halfc"
-        },
-        {
-            "name": "iran_outbound",
-            "type": "TcpListener",
-            "settings": {
-                "address": "0.0.0.0",
-                "port": 23,
-                "nodelay": true,
-                "whitelist": [
-                    "$iran_server_ip/32"
-                ]
-            },
-            "next": "reality_client"
-        },
-        {
-            "name": "reality_dest",
-            "type": "TcpConnector",
-            "settings": {
-                "nodelay": true,
-                "address": "telewebion.com",
-                "port": 443
-            }
-        }
-    ]
-}
-EOF
-        else
-            echo -e "${RED}Invalid input. Please enter 'Iran' or 'Kharej'.${NC}"
-            return
-        fi
-    else
-        echo -e "${RED}Invalid input. Please enter 'IPv4' or 'IPv6'.${NC}"
-        return
+    # Check if unzip is installed, install if necessary
+    if ! command -v unzip &> /dev/null; then
+        echo "Installing unzip..."
+        apt update
+        apt install -y unzip
     fi
 
-    # Create the systemd service file
-    cat <<EOF > $SERVICE_FILE
+    # Create folder and download Waterwall
+    mkdir -p /root/waterwall
+    cd /root/waterwall || exit
+
+    echo "Downloading Waterwall binary..."
+    wget -O Waterwall-linux-64.zip https://github.com/radkesvat/WaterWall/releases/latest/download/Waterwall-linux-64.zip
+    unzip Waterwall-linux-64.zip
+    rm Waterwall-linux-64.zip
+    mv Waterwall waterwall
+    chmod +x /root/waterwall/waterwall
+
+    # Download core.json
+    echo "Downloading core.json..."
+    wget -O core.json https://raw.githubusercontent.com/mahdipatriot/waterwall/main/core.json
+
+    # Select server type: Iran or Kharej
+    echo "Select server type:"
+    echo "1. Iran"
+    echo "2. Kharej"
+    read -rp "Enter your choice: " server_type
+
+    case $server_type in
+        1)
+            # Iran server configuration
+            read -rp "Enter secure password: " passwd
+            read -rp "Enter Kharej server IP: " inja_ip_kharej
+            read -rp "Enter ipv4 or ipv6: " ip_version
+            read -rp "Enter SNI: " inja_sni
+
+            # Download and customize config.json for Iran server
+            wget -O config.json https://raw.githubusercontent.com/mahdipatriot/waterwall/main/halfduplex_reverse_reality_iran
+            sed -i "s/\$passwd/$passwd/g" config.json
+            sed -i "s/\$inja_ip_kharej/$inja_ip_kharej/g" config.json
+            sed -i "s/\$inja_sni/$inja_sni/g" config.json
+            ;;
+        2)
+            # Kharej server configuration
+            read -rp "Enter secure password: " passwd
+            read -rp "Enter Iran server IP: " inja_ip_server_iran
+            read -rp "Enter ipv4 or ipv6: " ip_version
+            read -rp "Enter SNI: " inja_sni
+
+            # Download and customize config.json for Kharej server
+            wget -O config.json https://raw.githubusercontent.com/mahdipatriot/waterwall/main/halfuplex_reverse_reality_kharej
+            sed -i "s/\$passwd/$passwd/g" config.json
+            sed -i "s/\$inja_ip_server_iran/$inja_ip_server_iran/g" config.json
+            sed -i "s/\$inja_sni/$inja_sni/g" config.json
+            ;;
+        *)
+            echo "Invalid option. Exiting..."
+            exit 1
+            ;;
+    esac
+
+    # Create systemd service
+    cat > /etc/systemd/system/waterwall.service <<EOF
 [Unit]
 Description=Waterwall Service
 After=network.target
@@ -306,117 +84,87 @@ User=root
 WantedBy=multi-user.target
 EOF
 
-    # Enable and start the service
+    # Reload and start service
     systemctl daemon-reload
-    systemctl enable waterwall.service
-    systemctl start waterwall.service
+    systemctl start waterwall
+    systemctl enable waterwall
 
-    echo -e "${GREEN}Configuration and service created.${NC}"
-    read -p "Press Enter to continue..."
+    echo "Waterwall configuration and service setup complete."
+    echo "Systemd service status:"
+    systemctl status waterwall --no-pager
 }
 
-# Function to create a new configuration and service
-create_config_service() {
-    while true; do
-        clear
-        echo -e "${YELLOW}"
-        echo "========================================="
-        echo "         CREATE CONFIGURATION            "
-        echo "========================================="
-        echo -e "${NC}"
+# Function to remove Waterwall configuration and service
+remove_waterwall_config() {
+    clear
+    echo "Removing Waterwall Configuration and Service..."
 
-        echo -e "${CYAN}1. Half Duplex Reverse Reality with mux${NC}"
-        echo -e "${RED}2. Back to Main Menu${NC}"
-        echo ""
-        echo -n "Select an option: "
-        read sub_choice
-
-        case $sub_choice in
-        1)
-            create_half_duplex_reverse_reality
-            ;;
-        2)
-            break
+    read -rp "Are you sure you want to remove /root/waterwall and related systemd service? (yes/no): " answer
+    case $answer in
+        yes)
+            systemctl stop waterwall
+            systemctl disable waterwall
+            rm -rf /root/waterwall
+            rm /etc/systemd/system/waterwall.service
+            echo "Waterwall configuration and service removed."
             ;;
         *)
-            echo -e "${RED}Invalid option. Please try again.${NC}"
-            read -p "Press Enter to continue..."
+            echo "Removal aborted."
             ;;
-        esac
-    done
-}
-
-# Function to remove the configuration and service
-remove_config_service() {
-    echo -e "${RED}"
-    echo "========================================="
-    echo "      REMOVE CONFIGURATION & SERVICE      "
-    echo "========================================="
-    echo -e "${NC}"
-
-    echo -e -n "${YELLOW}Are you sure you want to remove the Waterwall service? (yes/no): ${NC}"
-    read confirmation
-
-    if [[ "$confirmation" == "yes" ]]; then
-        systemctl stop waterwall.service
-        systemctl disable waterwall.service
-        rm -f $SERVICE_FILE
-        rm -rf $WATERWALL_DIR
-        systemctl daemon-reload
-        echo -e "${RED}Configuration and service removed.${NC}"
-    else
-        echo -e "${YELLOW}Operation cancelled.${NC}"
-    fi
-
-    read -p "Press Enter to continue..."
-}
-
-# Function to show the status of the service
-show_service_status() {
-    echo -e "${GREEN}"
-    echo "========================================="
-    echo "           SHOW SERVICE STATUS            "
-    echo "========================================="
-    echo -e "${NC}"
-
-    systemctl status waterwall.service
-
-    read -p "Press Enter to continue..."
-}
-
-# Main menu
-while true; do
-    clear
-    echo -e "${GREEN}"
-    echo "========================================="
-    echo "     MahdiPatrioT WATERFALL MENU          "
-    echo "========================================="
-    echo -e "${NC}"
-
-    echo -e "${GREEN}1. Create Configuration and Service${NC}"
-    echo -e "${RED}2. Remove Configuration and Service${NC}"
-    echo -e "${CYAN}3. Show Service Status${NC}"
-    echo -e "${YELLOW}4. Exit${NC}"
-    echo ""
-    echo -n "Select an option: "
-    read choice
-
-    case $choice in
-    1)
-        create_config_service
-        ;;
-    2)
-        remove_config_service
-        ;;
-    3)
-        show_service_status
-        ;;
-    4)
-        exit 0
-        ;;
-    *)
-        echo -e "${RED}Invalid option. Please try again.${NC}"
-        read -p "Press Enter to continue..."
-        ;;
     esac
+}
+
+# Function to show Waterwall service status
+show_service_status() {
+    clear
+    echo "Waterwall Service Status:"
+    systemctl status waterwall --no-pager
+}
+
+# Function to restart Waterwall service
+restart_service() {
+    clear
+    echo "Restarting Waterwall Service..."
+    systemctl restart waterwall
+    echo "Waterwall Service restarted."
+}
+
+# Main menu function
+main_menu() {
+    clear
+    echo "MahdiPatrioT WATERFALL MENU"
+    echo "1. Create Configuration and Service"
+    echo "2. Remove Configuration and Service"
+    echo "3. Show Service Status"
+    echo "4. Restart Service"
+    echo "5. Exit"
+
+    read -rp "Enter your choice: " choice
+    case $choice in
+        1)
+            create_waterwall_config
+            ;;
+        2)
+            remove_waterwall_config
+            ;;
+        3)
+            show_service_status
+            ;;
+        4)
+            restart_service
+            ;;
+        5)
+            echo "Exiting..."
+            exit 0
+            ;;
+        *)
+            echo "Invalid option. Please try again."
+            ;;
+    esac
+}
+
+# Loop to display main menu until user exits
+while true; do
+    main_menu
+    read -rp "Press Enter to return to the main menu."
 done
