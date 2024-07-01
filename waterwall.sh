@@ -60,7 +60,7 @@ create_half_duplex_reverse_reality() {
 }
 EOF
 
-    echo -e -n "${CYAN}Is this an Iran server or Kharej server? (Iran/Kharej): ${NC}"
+    echo -e -n "${CYAN}Is this an Iran server or Kharej server? (Iran/Kharej) (ipv6 is not added yet): ${NC}"
     read server_type
     server_type=$(echo "$server_type" | tr '[:upper:]' '[:lower:]')
 
@@ -286,8 +286,8 @@ Description=Waterwall Service
 After=network.target
 
 [Service]
-ExecStart=$WATERWALL_DIR/waterwall $WATERWALL_DIR/core.json
-WorkingDirectory=$WATERWALL_DIR
+ExecStart=/root/waterwall/waterwall
+WorkingDirectory=/root/waterwall
 StandardOutput=journal
 StandardError=journal
 Restart=always
@@ -302,8 +302,42 @@ EOF
     systemctl enable waterwall.service
     systemctl start waterwall.service
 
-    echo -e "${GREEN}Configuration and service created. (ipv6 is not added yet)${NC}"
+    echo -e "${GREEN}Configuration and service created.${NC}"
     read -p "Press Enter to continue..."
+
+    # Return to main menu after successful creation
+    return
+}
+
+# Function to create a new configuration and service
+create_config_service() {
+    while true; do
+        clear
+        echo -e "${YELLOW}"
+        echo "========================================="
+        echo "         CREATE CONFIGURATION            "
+        echo "========================================="
+        echo -e "${NC}"
+
+        echo -e "${CYAN}1. Half Duplex Reverse Reality with mux${NC}"
+        echo -e "${RED}2. Back to Main Menu${NC}"
+        echo ""
+        echo -n "Select an option: "
+        read sub_choice
+
+        case $sub_choice in
+        1)
+            create_half_duplex_reverse_reality
+            ;;
+        2)
+            break
+            ;;
+        *)
+            echo -e "${RED}Invalid option. Please try again.${NC}"
+            read -p "Press Enter to continue..."
+            ;;
+        esac
+    done
 }
 
 # Function to remove the configuration and service
@@ -314,42 +348,69 @@ remove_config_service() {
     echo "========================================="
     echo -e "${NC}"
 
-    echo -e -n "${YELLOW}Are you sure you want to remove the Waterwall configuration and service? (yes/no): ${NC}"
-    read confirm_remove
+    echo -e -n "${YELLOW}Are you sure you want to remove the Waterwall service? (yes/no): ${NC}"
+    read confirmation
 
-    if [[ "$confirm_remove" == "yes" ]]; then
+    if [[ "$confirmation" == "yes" ]]; then
         systemctl stop waterwall.service
         systemctl disable waterwall.service
+        rm -f $SERVICE_FILE
         rm -rf $WATERWALL_DIR
-        rm $SERVICE_FILE
-
-        echo -e "${GREEN}Waterwall configuration and service removed.${NC}"
+        systemctl daemon-reload
+        echo -e "${RED}Configuration and service removed.${NC}"
     else
-        echo -e "${YELLOW}Removal cancelled.${NC}"
+        echo -e "${YELLOW}Operation cancelled.${NC}"
     fi
 
     read -p "Press Enter to continue..."
 }
 
-# Main menu loop
-while true; do
-    clear
-    echo -e "${CYAN}"
+# Function to show the status of the service
+show_service_status() {
+    echo -e "${GREEN}"
     echo "========================================="
-    echo "          WATERWALL CONFIGURATION         "
+    echo "           SHOW SERVICE STATUS            "
     echo "========================================="
     echo -e "${NC}"
-    echo "1. Create Half Duplex Reverse Reality Configuration"
-    echo "2. Remove Waterwall Configuration and Service"
-    echo "3. Exit"
 
-    echo -e -n "${YELLOW}Enter your choice (1-3): ${NC}"
+    systemctl status waterwall.service
+
+    read -p "Press Enter to continue..."
+}
+
+# Main menu
+while true; do
+    clear
+    echo -e "${GREEN}"
+    echo "========================================="
+    echo "     MahdiPatrioT WATERFALL MENU          "
+    echo "========================================="
+    echo -e "${NC}"
+
+    echo -e "${GREEN}1. Create Configuration and Service${NC}"
+    echo -e "${RED}2. Remove Configuration and Service${NC}"
+    echo -e "${CYAN}3. Show Service Status${NC}"
+    echo -e "${YELLOW}4. Exit${NC}"
+    echo ""
+    echo -n "Select an option: "
     read choice
 
     case $choice in
-        1) create_half_duplex_reverse_reality ;;
-        2) remove_config_service ;;
-        3) exit ;;
-        *) echo -e "${RED}Invalid choice. Please enter a number from 1 to 3.${NC}" ;;
+    1)
+        create_config_service
+        ;;
+    2)
+        remove_config_service
+        ;;
+    3)
+        show_service_status
+        ;;
+    4)
+        exit 0
+        ;;
+    *)
+        echo -e "${RED}Invalid option. Please try again.${NC}"
+        read -p "Press Enter to continue..."
+        ;;
     esac
 done
